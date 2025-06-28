@@ -15,6 +15,10 @@ if option == "Upload Excel":
         xls = pd.ExcelFile(uploaded_excel)
         sheet = st.selectbox("Select a sheet", xls.sheet_names)
         df = xls.parse(sheet)
+        col_renames = {0: "Event", 1: "Event Number", 2: "Group Gender"}
+            for i, new_name in col_renames.items():
+            if i < len(df.columns):
+        df.columns.values[i] = new_name
         st.write(f"### Preview of '{sheet}'")
         st.dataframe(df)
 

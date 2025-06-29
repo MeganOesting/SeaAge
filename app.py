@@ -3,58 +3,39 @@ import pandas as pd
 import pdfplumber
 import io
 
-st.title("SEA Age Group Data Viewer")
+st.title("SEA Age Group Championship Parser")
 
-option = st.radio("Choose data source:", ["Upload Excel", "Upload PDF"])
+uploaded_pdf = st.file_uploader("Upload the full meet results PDF", type=["pdf"])
 
-# --- EXCEL HANDLER ---
-if option == "Upload Excel":
-    uploaded_excel = st.file_uploader("Upload an Excel file", type=["xlsx"])
+if uploaded_pdf:
+    all_text = ""
+    with pdfplumber.open(uploaded_pdf) as pdf:
+        for page in pdf.pages:
+            all_text += page.extract_text() + "\n"
+
+    # Placeholder: parsing logic will go here
+    # You'll later break this into: parse_individual_events(), parse_relay_events(), parse_meet_records()
     
-    if uploaded_excel:
-        xls = pd.ExcelFile(uploaded_excel)
-        sheet = st.selectbox("Select a sheet", xls.sheet_names)
-        df = xls.parse(sheet)
-        col_renames = {0: "Event", 1: "Event Number", 2: "Group Gender"}
-            for i, new_name in col_renames.items():
-            if i < len(df.columns):
-        df.columns.values[i] = new_name
-        st.write(f"### Preview of '{sheet}'")
-        st.dataframe(df)
+    # Stub data for structure preview
+    df_individual = pd.DataFrame({"Event": ["100 Free"], "Name": ["Ali"], "Time": ["59.12"]})
+    df_relay = pd.DataFrame({"Event": ["4x100 Free"], "Team": ["Malaysia"], "Final Time": ["3:42.67"]})
+    df_records = pd.DataFrame({"Event": ["100 Free"], "Record Time": ["58.20"], "Holder": ["Ng, Y.H."], "Country": ["SGP"], "Date": ["12/6/2024"]})
 
-        # Optional filtering
-        st.write("### Filter data")
-        col_to_filter = st.selectbox("Choose column to filter", df.columns)
-        keyword = st.text_input("Show rows where this column contains:")
-        if keyword:
-            filtered_df = df[df[col_to_filter].astype(str).str.contains(keyword, case=False, na=False)]
-            st.dataframe(filtered_df)
+    st.write("### Preview: Individual Events")
+    st.dataframe(df_individual)
 
-# --- PDF HANDLER ---
-elif option == "Upload PDF":
-    uploaded_pdf = st.file_uploader("Upload a PDF file", type=["pdf"])
-    
-    if uploaded_pdf:
-        all_tables = []
-        with pdfplumber.open(uploaded_pdf) as pdf:
-            for page in pdf.pages:
-                tables = page.extract_tables()
-                for table in tables:
-                    try:
-                        df = pd.DataFrame(table[1:], columns=table[0])
-                        all_tables.append(df)
-                    except:
-                        pass  # skip malformed tables
+    st.write("### Preview: Relay Events")
+    st.dataframe(df_relay)
 
-        if all_tables:
-            combined = pd.concat(all_tables, ignore_index=True)
-            st.write("### Extracted Table from PDF:")
-            st.dataframe(combined)
+    st.write("### Preview: Meet Records")
+    st.dataframe(df_records)
 
-            # Download as Excel
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                combined.to_excel(writer, index=False, sheet_name='Extracted')
-            st.download_button("Download as Excel", data=output.getvalue(), file_name="converted_from_pdf.xlsx")
-        else:
-            st.warning("No tables were found in the PDF.")
+    # Create multi-sheet Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_individual.to_excel(writer, index=False, sheet_name='Individual Events')
+        df_relay.to_excel(writer, index=False, sheet_name='Relay Events')
+        df_records.to_excel(writer, index=False, sheet_name='Meet Records')
+
+    st.download_button("Download 3-Sheet Excel", data=output.getvalue(), file_name="sea_age_parsed.xlsx")
+
